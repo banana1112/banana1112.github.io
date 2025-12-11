@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <title>簡易射擊遊戲</title>
+    <style>
+        body {
+            margin: 0;
+            background: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            background: #fff;
+            border: 3px solid #000;
+        }
+    </style>
+</head>
+<body tabindex="0">
+    <canvas id="game" width="400" height="600"></canvas>
+
+    <script>
+        let canvas = document.getElementById("game");
+        let ctx = canvas.getContext("2d");
+
+        let score = 0;
+        let gameOver = false;
+
+        let player = { x:200, y:550, width:30, height:30, speed:5 };
+        let bullets = [];
+        let enemies = [];
+        let enemySpawnTimer = 0;
+
+        const keys = {};
+        window.addEventListener("keydown", e => {
+            keys[e.code] = true;
+            if (e.code === "Space") e.preventDefault();
+        });
+        window.addEventListener("keyup", e => {
+            keys[e.code] = false;
+            if (gameOver && e.code === "KeyR") restartGame();
+        });
+
+        function spawnEnemy() {
+            enemies.push({ x: Math.random() * (canvas.width - 30), y: -20, width: 30, height: 30, speed: 2 });
+        }
+
+        function update() {
+            if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
+            if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
+
+            if (keys["Space"]) {
+                bullets.push({ x: player.x + player.width/2 - 2, y: player.y, width: 5, height: 10, speed: 6 });
+                keys["Space"] = false;
+            }
+
+            bullets.forEach(b => b.y -= b.speed);
+            bullets = bullets.filter(b => b.y >= -10);
+
+            enemySpawnTimer++;
+            if (enemySpawnTimer > 60) {
+                spawnEnemy();
+                enemySpawnTimer = 0;
+            }
+
+            enemies.forEach(en => en.y += en.speed);
+            enemies = enemies.filter(en => en.y <= canvas.height + 20);
+
+            for (let en of enemies) {
+                if (player.x < en.x + en.width && player.x + player.width > en.x && player.y < en.y + en.height && player.y + player.height > en.y) {
+                    gameOver = true;
+                }
+            }
+            if (gameOver) return;
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    let en = enemies[i], b = bullets[j];
+                    if (b.x < en.x + en.width && b.x + b.width > en.x && b.y < en.y + en.height && b.y + b.height > en.y) {
+                        enemies.splice(i, 1);
+                        bullets.splice(j, 1);
+                        score++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle = "white";
+                ctx.font = "32px Arial";
+                ctx.fillText("GAME OVER",110,250);
+                ctx.font = "24px Arial";
+                ctx.fillText("Score: " + score,150,300);
+                ctx.font = "18px Arial";
+                ctx.fillText("Press R to Restart",120,350);
+                return;
+            }
+            ctx.fillStyle="blue"; ctx.fillRect(player.x,player.y,player.width,player.height);
+            ctx.fillStyle="red"; bullets.forEach(b=>ctx.fillRect(b.x,b.y,b.width,b.height));
+            ctx.fillStyle="green"; enemies.forEach(en=>ctx.fillRect(en.x,en.y,en.width,en.height));
+            ctx.fillStyle="black"; ctx.font="20px Arial"; ctx.fillText("Score: "+score,10,30);
+        }
+
+        function gameLoop() {
+            if (!gameOver) update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function restartGame() {
+            score = 0;
+            gameOver = false;
+            player.x = 200; player.y = 550;
+            bullets = [];
+            enemies = [];
+            enemySpawnTimer = 0;
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
